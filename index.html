@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oct 28 Portable PDD Package Walkthrough</title>
+<style>
+:root{
+  --bg:#F2F5F6; --surface:#FFFFFF; --ink:#132020; --muted:#526367; --rule:#D5DFE1; --wash:#E7EEF0;
+  --accent:#0F766E; --accent-bg:#DCF0ED;
+  --good:#1F7A4A; --good-bg:#DCF1E5;
+  --warn:#9E620A; --warn-bg:#F8EBD2;
+  --bad:#B53227; --bad-bg:#F8E0DD;
+  --polish:#3D5588; --polish-bg:#E3E9F5;
+  --display:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --body:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1415; --surface:#162022; --ink:#E7F0EF; --muted:#9AB0B3; --rule:#273538; --wash:#1E2A2C;
+    --accent:#5CC8BE; --accent-bg:#153331;
+    --good:#6BD197; --good-bg:#163022;
+    --warn:#E6B566; --warn-bg:#33270F;
+    --bad:#F08C82; --bad-bg:#391B18;
+    --polish:#9BB6EE; --polish-bg:#1E2840;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1415; --surface:#162022; --ink:#E7F0EF; --muted:#9AB0B3; --rule:#273538; --wash:#1E2A2C;
+  --accent:#5CC8BE; --accent-bg:#153331;
+  --good:#6BD197; --good-bg:#163022;
+  --warn:#E6B566; --warn-bg:#33270F;
+  --bad:#F08C82; --bad-bg:#391B18;
+  --polish:#9BB6EE; --polish-bg:#1E2840;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.5;padding-inline:16px;padding-block:16px 56px}
+.wrap{max-width:980px;margin-inline:auto;width:100%}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.18;letter-spacing:-.015em}
+h1{font-size:clamp(1.75rem,5vw,2.65rem);font-weight:800}
+h2{font-size:1.35rem;font-weight:750;margin-bottom:6px}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+section{margin-top:40px}
+.eyebrow{font-family:var(--mono);font-size:.73rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{color:var(--muted);font-size:1.03rem;max-width:68ch;margin-top:10px}
+.sub{color:var(--muted);font-size:.92rem;margin-bottom:14px}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font-family:var(--mono);font-size:.74rem;padding:4px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--rule);color:var(--muted);max-width:100%;overflow-wrap:anywhere}
+
+/* Scope notice */
+.scope-box{margin-top:16px;padding:13px 16px;border-radius:12px;background:var(--warn-bg);border:1px solid var(--rule);color:var(--ink);font-size:.9rem}
+.scope-box b{color:var(--warn)}
+
+/* Verdict stat tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px;margin-top:18px}
+.tile{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:16px;min-width:0}
+.tile .num{font-family:var(--display);font-size:1.85rem;font-weight:800;line-height:1.1}
+.tile .lbl{font-weight:600;font-size:.9rem;margin-top:4px}
+.tile .note{font-size:.82rem;color:var(--muted);margin-top:4px}
+.num.good{color:var(--good)} .num.warn{color:var(--warn)} .num.bad{color:var(--bad)} .num.accent{color:var(--accent)}
+
+/* Panels & charts */
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:18px;margin-top:14px;min-width:0}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:14px}
+.svg-wrap{width:100%;overflow:hidden}
+.svg-wrap svg{display:block;width:100%;height:auto}
+
+/* PDD expert lens cards */
+.lens-card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.lens-card p{font-size:.89rem;color:var(--ink)}
+.lens-card .quote{font-size:.83rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px;font-style:italic}
+.lens-card ul{margin:2px 0 0 18px;padding:0;display:flex;flex-direction:column;gap:5px;font-size:.87rem}
+
+/* Timing bars */
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding-block:9px;border-bottom:1px solid var(--rule)}
+.bar-row:last-child{border-bottom:0;padding-bottom:0}
+.bar-head{display:flex;justify-content:space-between;gap:8px;font-size:.86rem;flex-wrap:wrap}
+.bar-head b{font-weight:600}
+.bar-head span{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.track{height:12px;border-radius:6px;background:var(--wash);overflow:hidden}
+.fill{height:100%;border-radius:6px}
+.fill.good{background:var(--good)} .fill.warn{background:var(--warn)} .fill.bad{background:var(--bad)} .fill.accent{background:var(--accent)}
+
+/* ER verification cards */
+.er-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:14px}
+.er-card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:18px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.er-big{font-family:var(--display);font-size:1.7rem;font-weight:800;color:var(--good)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:.86rem}
+.kv dt{color:var(--muted);font-family:var(--mono);font-size:.78rem}
+.kv dd{margin:0;overflow-wrap:anywhere}
+
+/* Pills */
+.pill{display:inline-block;font-family:var(--mono);font-size:.7rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.pill.fixed{background:var(--good-bg);color:var(--good)}
+.pill.partial{background:var(--warn-bg);color:var(--warn)}
+.pill.open{background:var(--bad-bg);color:var(--bad)}
+.pill.new{background:var(--accent-bg);color:var(--accent)}
+.pill.blocker{background:var(--bad-bg);color:var(--bad)}
+.pill.defect{background:var(--warn-bg);color:var(--warn)}
+.pill.polish{background:var(--polish-bg);color:var(--polish)}
+
+/* Matrix table */
+.table-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--rule);border-radius:14px;margin-top:14px;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:520px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--rule);font-size:.86rem;vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-size:.71rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--wash)}
+code{font-family:var(--mono);font-size:.8rem;background:var(--wash);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere;word-break:break-word}
+
+/* Finding cards */
+.findings{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:14px}
+.fcard{background:var(--surface);border:1px solid var(--rule);border-left:4px solid var(--rule);border-radius:12px;padding:16px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.fcard.blocker{border-left-color:var(--bad)}
+.fcard.defect{border-left-color:var(--warn)}
+.fcard.polish{border-left-color:var(--polish)}
+.fhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fhead h3{font-size:.98rem;flex:1 1 200px}
+.fmeta{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;font-size:.88rem}
+.fmeta p{overflow-wrap:anywhere}
+.fmeta b{color:var(--muted);font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;margin-right:6px}
+
+/* Collapsible technical notes */
+details.tech{margin-top:16px;background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:14px 18px}
+details.tech summary{cursor:pointer;font-weight:700;font-size:.96rem;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+details.tech summary::-webkit-details-marker{display:none}
+details.tech summary::after{content:"+";font-family:var(--mono);font-size:1.1rem;color:var(--accent)}
+details.tech[open] summary::after{content:"-"}
+details.tech .tech-body{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+
+/* Improvements */
+.roadmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.rcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:15px;min-width:0}
+.rcard .step{font-family:var(--mono);font-size:.74rem;color:var(--accent);font-weight:700}
+.rcard h3{margin-top:4px;font-size:.96rem}
+.rcard p{font-size:.86rem;color:var(--muted);margin-top:6px}
+
+.foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule);font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.foot ol{margin:4px 0 0 18px;padding:0;display:flex;flex-direction:column;gap:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Staff Walkthrough · Verra PDD Specialist Review · 25 Nov 2026</div>
+  <h1>Oct 28 Portable PDD Package</h1>
+  <p class="lede">Hands-on walkthrough of Tinh Ta's 28 October 2026 release (<code>2026-10-28-r4</code>) from the perspective of a Verra PDD specialist with little AI experience, tested on a Windows laptop against its own setup guides, six real registry workbooks, and all 18 findings from September.</p>
+  <div class="meta-row">
+    <span class="chip">Package: PDD.zip (672.6 MB · 394 files)</span>
+    <span class="chip">Diff vs Sept: +12 added · -1 removed · 23 changed</span>
+    <span class="chip">Tested: setup, 86 checks, 6 workbooks, library &amp; guides</span>
+  </div>
+  <div class="scope-box">
+    <b>Scope of this test (unverified):</b> No full PDD draft was generated in this walkthrough. We tested setup, all 86 shipped automated checks, six real Verra workbooks (including independent ER checks), the methodology library, and the Sept-to-Oct diff. Whether an AI agent writes a stronger Word PDD under the new Oct 28 rules remains unverified until a live authoring run is completed.
+  </div>
+</header>
+
+<section>
+  <h2>Verdict at a glance</h2>
+  <p class="sub">The Oct 28 update closes the two biggest September trust gaps and adds real Excel inspection, while leaving older <code>.xls</code> WTE workbooks blocked, the 183 MB workbook timing out, and key Verra reference PDFs missing.</p>
+  <div class="tiles">
+    <div class="tile">
+      <div class="num good">10 / 18</div>
+      <div class="lbl">Sept findings fixed</div>
+      <div class="note">4 partially fixed, 4 still open. Fake file fingerprints and the A1 empty-file trap are closed.</div>
+    </div>
+    <div class="tile">
+      <div class="num good">86 / 86</div>
+      <div class="lbl">Shipped checks pass</div>
+      <div class="note">81 package tests + 5 workbook-reader tests pass; integrity check stays green after audit.</div>
+    </div>
+    <div class="tile">
+      <div class="num accent">2 / 2</div>
+      <div class="lbl">Headline ERs verified</div>
+      <div class="note">Gaotang 662,403 tCO2e and CarbonCure MP1 8,750 tCO2e match their registry PDFs.</div>
+    </div>
+    <div class="tile">
+      <div class="num bad">1 · 7 · 3</div>
+      <div class="lbl">Blocker · Defect · Polish</div>
+      <div class="note">Blocker: older <code>.xls</code> WTE spreadsheets fail every shipped Excel reader.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What a Verra PDD specialist experiences</h2>
+  <p class="sub">Three questions that matter to a carbon-markets specialist who is not an AI engineer: first-hour setup, Verra compliance safety, and whether the new calculation workflow actually checks ER math.</p>
+  <div class="grid-3">
+
+    <article class="lens-card">
+      <div class="eyebrow">A · First-hour experience</div>
+      <h3>10+ terminal commands before a first draft</h3>
+      <p>Before drafting a single PDD sentence, a staff member must unzip 673 MB, install Python, LibreOffice, Poppler, and an AI app, run <b>4 setup commands</b> and <b>6–7 verification commands</b> (~3 min of terminal logs), read <b>6+ markdown guides</b>, run a startup smoke test, send Prompt A, review a checkpoint, and only then send Prompt B.</p>
+      <p class="quote">"Run the complete tests with the receiving device's approved workspace interpreter: python -m unittest discover..." (PORTABLE_UPDATE_2026-10-28.md)</p>
+      <ul>
+        <li><b>Conflicting guides:</b> Both Word setup guides in Drive are unchanged from 17 Sep 2026 (still skip Section 1, cite "pages 5 to 7", and omit all Oct 28 Excel tools).</li>
+        <li><b>Scary false alarms:</b> Even on a working laptop, setup prints <code>soffice_version=UNAVAILABLE (timed out after 15 seconds)</code>, looking broken when PDF rendering actually works.</li>
+        <li><b>Duplicate folders:</b> 4 WTE projects appear twice in <code>inputs/fresh_registry/</code>, and 3 copies of the v4.4 PD template still ship.</li>
+      </ul>
+    </article>
+
+    <article class="lens-card">
+      <div class="eyebrow">B · Verra methodology &amp; VVB risk</div>
+      <h3>Missing VCS Standard v4.7 &amp; VM0043 v1.0</h3>
+      <p>The library matches Gaotang WTE's <code>ACM0022 v03.0</code>, but misses two rules that Verra Project Review Reports explicitly enforce on the shipped projects:</p>
+      <ul>
+        <li><b>CarbonCure (VCS 4019):</b> Registered and verified under <b>VM0043 v1.0</b> (confirmed in PRRs R1, V2, V3), yet <code>library/</code> ships only <b>VM0043 v1.1</b> (Dec 2024). Applying v1.1 clauses to a v1.0 project without an approved transition triggers a <b>VVB Corrective Action Request (CAR)</b>.</li>
+        <li><b>No VCS Standard anywhere:</b> Both CarbonCure and Gaotang are assessed against <b>VCS Standard v4.7</b> (Apr 2024), which is absent from <code>library/</code>. Staff cannot verify excluded activities (Table 1), crediting-period rules (Section 3.8.1), safeguards, or v4.3-to-v4.4 template migration rules inside the workspace, risking <b>Verra completeness-check rejections</b>.</li>
+      </ul>
+    </article>
+
+    <article class="lens-card">
+      <div class="eyebrow">C · New calculations/ workflow</div>
+      <h3>Builds new models, does not verify proponent files</h3>
+      <p><code>calculations/</code> is a separate workflow to author a new <code>Calculations.xlsx</code> from project parameters. It does not recalculate or independently verify a proponent's existing ER sheet.</p>
+      <p class="quote">"It creates calculations; the PDD workflow continues to report supplied calculations without recalculating them." (calculations/README.md)</p>
+      <ul>
+        <li><b>Rounding (<code>ROUNDDOWN</code>):</b> Internal design notes (<code>EXCEL_EXAMPLES.md</code>) rightly spot Gaotang's <code>ROUNDDOWN</code> and Taiping's component-level rounding, but never explain in plain staff language why whole-tonne conservative truncation prevents VCU over-issuance.</li>
+        <li><b>Empty saved values:</b> Docs rightly forbid opening and resaving workbooks with missing calculated values, but explain it in programmer terms ("cached formula values", "ABSENT") instead of plain advice: ask the proponent for a properly saved Excel file.</li>
+      </ul>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>Progress since September and workbook speed</h2>
+  <p class="sub">Left: how the 18 September findings landed in October and the 11 active issues remaining. Right: measured time to inspect real registry spreadsheets.</p>
+  <div class="grid-2">
+    <div class="panel">
+      <h3>Sept findings &amp; Oct active issues</h3>
+      <div class="svg-wrap" style="margin-top:12px">
+        <svg viewBox="0 0 420 190" role="img" aria-label="Bar chart of Sept finding resolutions and Oct active issues">
+          <text x="0" y="16" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="currentColor" opacity=".65">SEPT 18 FINDINGS IN OCT 28</text>
+          <rect x="0" y="26" width="222" height="24" rx="4" fill="#1F7A4A"/>
+          <rect x="225" y="26" width="88" height="24" rx="4" fill="#9E620A"/>
+          <rect x="316" y="26" width="88" height="24" rx="4" fill="#B53227"/>
+          <text x="111" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFFFFF">10 Fixed</text>
+          <text x="269" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFFFFF">4 Partial</text>
+          <text x="360" y="42" text-anchor="middle" font-size="11" font-weight="700" fill="#FFFFFF">4 Open</text>
+
+          <text x="0" y="84" font-size="11" font-family="ui-monospace,Consolas,monospace" fill="currentColor" opacity=".65">OCT 28 ACTIVE ISSUES (11 TOTAL)</text>
+          <text x="0" y="106" font-size="12" font-weight="600" fill="currentColor">Blocker</text>
+          <rect x="76" y="95" width="38" height="16" rx="4" fill="#B53227"/>
+          <text x="122" y="107" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="currentColor">1 (.xls unreadable)</text>
+          <text x="0" y="134" font-size="12" font-weight="600" fill="currentColor">Defect</text>
+          <rect x="76" y="123" width="266" height="16" rx="4" fill="#9E620A"/>
+          <text x="350" y="135" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="currentColor">7</text>
+          <text x="0" y="162" font-size="12" font-weight="600" fill="currentColor">Polish</text>
+          <rect x="76" y="151" width="114" height="16" rx="4" fill="#3D5588"/>
+          <text x="198" y="163" font-size="12" font-family="ui-monospace,Consolas,monospace" fill="currentColor">3</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Measured Excel inspector runtime</h3>
+      <div class="bar-row">
+        <div class="bar-head"><b>Gaotang 4921 (.xlsx, 0.2 MB)</b><span>&lt;1 s · saved values OK</span></div>
+        <div class="track"><div class="fill good" style="width:2%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><b>CarbonCure MP1 (.xlsx, 19.2 MB)</b><span>56.9 s · A1 trap caught · no saved values</span></div>
+        <div class="track"><div class="fill accent" style="width:19%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><b>CarbonCure MP2 (.xlsx, 105.9 MB)</b><span>254.6 s (4.2 min) · saved values OK</span></div>
+        <div class="track"><div class="fill warn" style="width:85%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><b>CarbonCure MP3 (.xlsx, 183.4 MB)</b><span>&gt;300 s TIMEOUT (1.14 GB inside file)</span></div>
+        <div class="track"><div class="fill bad" style="width:100%"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-head"><b>Linfen 4818 (.xls, 0.3 MB)</b><span>Blocked · cannot read sheets or formulas</span></div>
+        <div class="track"><div class="fill bad" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Staff walkthrough flow</h2>
+  <p class="sub">Where a PDD specialist moves smoothly and where the package still stalls on a normal Windows laptop.</p>
+  <div class="panel">
+    <div class="svg-wrap">
+      <svg viewBox="0 0 920 135" role="img" aria-label="Five-stage staff walkthrough flow diagram">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,1 L9,5 L0,9 z" fill="#7A8D91"/>
+          </marker>
+        </defs>
+        <rect x="4" y="14" width="164" height="106" rx="10" fill="none" stroke="#1F7A4A" stroke-width="2"/>
+        <text x="16" y="34" font-size="10" font-family="ui-monospace,Consolas,monospace" fill="#1F7A4A" font-weight="700">1 · UNZIP &amp; VERIFY</text>
+        <text x="16" y="54" font-size="12" font-weight="700" fill="currentColor">Clean package</text>
+        <text x="16" y="72" font-size="11" fill="currentColor" opacity=".72">394 files verified</text>
+        <text x="16" y="88" font-size="11" fill="currentColor" opacity=".72">Audit no longer</text>
+        <text x="16" y="104" font-size="11" fill="currentColor" opacity=".72">breaks integrity</text>
+        <line x1="168" y1="67" x2="188" y2="67" stroke="#7A8D91" stroke-width="2" marker-end="url(#arr)"/>
+
+        <rect x="192" y="14" width="164" height="106" rx="10" fill="none" stroke="#9E620A" stroke-width="2"/>
+        <text x="204" y="34" font-size="10" font-family="ui-monospace,Consolas,monospace" fill="#9E620A" font-weight="700">2 · SETUP &amp; GUIDES</text>
+        <text x="204" y="54" font-size="12" font-weight="700" fill="currentColor">Heavy first hour</text>
+        <text x="204" y="72" font-size="11" fill="currentColor" opacity=".72">10+ commands</text>
+        <text x="204" y="88" font-size="11" fill="currentColor" opacity=".72">15 s LibreOffice hang</text>
+        <text x="204" y="104" font-size="11" fill="currentColor" opacity=".72">Word guides stale</text>
+        <line x1="356" y1="67" x2="376" y2="67" stroke="#7A8D91" stroke-width="2" marker-end="url(#arr)"/>
+
+        <rect x="380" y="14" width="164" height="106" rx="10" fill="none" stroke="#B53227" stroke-width="2"/>
+        <text x="392" y="34" font-size="10" font-family="ui-monospace,Consolas,monospace" fill="#B53227" font-weight="700">3 · EXCEL EVIDENCE</text>
+        <text x="392" y="54" font-size="12" font-weight="700" fill="currentColor">Mixed results</text>
+        <text x="392" y="72" font-size="11" fill="currentColor" opacity=".72">A1 trap fixed</text>
+        <text x="392" y="88" font-size="11" fill="currentColor" opacity=".72">183 MB times out</text>
+        <text x="392" y="104" font-size="11" fill="currentColor" opacity=".72">.xls blocked (F1)</text>
+        <line x1="544" y1="67" x2="564" y2="67" stroke="#7A8D91" stroke-width="2" marker-end="url(#arr)"/>
+
+        <rect x="568" y="14" width="164" height="106" rx="10" fill="none" stroke="#1F7A4A" stroke-width="2"/>
+        <text x="580" y="34" font-size="10" font-family="ui-monospace,Consolas,monospace" fill="#1F7A4A" font-weight="700">4 · EVIDENCE CHECKS</text>
+        <text x="580" y="54" font-size="12" font-weight="700" fill="currentColor">Stronger checks</text>
+        <text x="580" y="72" font-size="11" fill="currentColor" opacity=".72">Real file fingerprints</text>
+        <text x="580" y="88" font-size="11" fill="currentColor" opacity=".72">Citation IDs verified</text>
+        <text x="580" y="104" font-size="11" fill="currentColor" opacity=".72">One gap register</text>
+        <line x1="732" y1="67" x2="752" y2="67" stroke="#7A8D91" stroke-width="2" marker-end="url(#arr)"/>
+
+        <rect x="756" y="14" width="160" height="106" rx="10" fill="none" stroke="#9E620A" stroke-width="2"/>
+        <text x="768" y="34" font-size="10" font-family="ui-monospace,Consolas,monospace" fill="#9E620A" font-weight="700">5 · RENDER &amp; QA</text>
+        <text x="768" y="54" font-size="12" font-weight="700" fill="currentColor">Two gaps left</text>
+        <text x="768" y="72" font-size="11" fill="currentColor" opacity=".72">200 DPI floor added</text>
+        <text x="768" y="88" font-size="11" fill="currentColor" opacity=".72">Style contrast missed</text>
+        <text x="768" y="104" font-size="11" fill="currentColor" opacity=".72">Word GUI check</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Headline ER numbers independently verified</h2>
+  <p class="sub">Recomputed read-only from the raw spreadsheet files without opening Excel or changing any file, then checked against the supplied Verra PDFs.</p>
+  <div class="er-grid">
+    <div class="er-card">
+      <div class="eyebrow">VCS 4921 · ACM0022 v03.0 · WTE</div>
+      <h3>Gaotang MSW Incineration</h3>
+      <div class="er-big">662,403 tCO2e</div>
+      <dl class="kv">
+        <dt>Workbook</dt><dd><code>VCS 4921 ER Calculation V1.5.xlsx</code> (<code>ER by Calendar Year</code>)</dd>
+        <dt>Baseline (D25)</dt><dd>929,452 tCO2e (exact sum of <code>D3:D23</code>)</dd>
+        <dt>Project (F25)</dt><dd>267,049 tCO2e (exact sum of <code>F3:F23</code>); Leakage 0</dd>
+        <dt>10-yr Avg (J27)</dt><dd>66,240 tCO2e/yr (<code>ROUNDDOWN(J25/10,0)</code>)</dd>
+        <dt>PDF Match</dt><dd>Exact match to <code>VCS PD 4921 v1.5 clean.pdf</code> pp. 4 &amp; 10. All 569 formulas have saved values.</dd>
+      </dl>
+    </div>
+
+    <div class="er-card">
+      <div class="eyebrow">VCS 4019 · VM0043 v1.0 · Concrete CO2</div>
+      <h3>CarbonCure Asia #1 (MP1 2022)</h3>
+      <div class="er-big">8,750 tCO2e</div>
+      <dl class="kv">
+        <dt>Workbook</dt><dd><code>(1) ER_spreadsheet (15).xlsx</code> (<code>Sheet0</code>, 74,736 tickets)</dd>
+        <dt>File Catch</dt><dd>Misleading <code>A1</code> size flagged suspect; all 1,121,040 formulas lack saved values</dd>
+        <dt>Recomputed</dt><dd>172,653.29 BE &minus; 163,902.29 PE = 8,750.9946 tCO2e (133.54 t CO2 injected)</dd>
+        <dt>PDF Match</dt><dd>Truncated total 8,750 tCO2e matches MR p. 41. Right under Oct 28 rules to flag missing saved values rather than silently recalculate.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>September to October scorecard</h2>
+  <p class="sub">All 18 findings from the September field tests tracked against hands-on Oct 28 results.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>September finding</th><th>Oct 28</th><th>Measured evidence</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>B1</code></td><td>111 MB &amp; 192 MB workbooks crashed / unreadable</td><td><span class="pill partial">Partial</span></td><td>111 MB read cleanly in 4.2 min; 183 MB timed out past 5 min (<code>F2</code>).</td></tr>
+        <tr><td><code>B2</code></td><td>Invented file fingerprints passed checkers</td><td><span class="pill fixed">Fixed</span></td><td>Checker now recalculates fingerprints from disk; verified in 81-test suite.</td></tr>
+        <tr><td><code>N1</code></td><td>Wrong <code>A1</code> size tag hid 74,736 rows</td><td><span class="pill fixed">Fixed</span></td><td>Flags <code>A1</code> as suspect and detects 1.12M formulas with missing saved values.</td></tr>
+        <tr><td><code>N2</code></td><td>Black-on-navy table header passed QA</td><td><span class="pill partial">Partial</span></td><td>Catches explicit black text (1.83:1); misses default style-inherited black (<code>F4</code>).</td></tr>
+        <tr><td><code>N3</code></td><td>Run record disagreed with itself</td><td><span class="pill fixed">Fixed</span></td><td>One master register now drives <code>evidence_and_gaps.md</code> with tamper check.</td></tr>
+        <tr><td><code>D1</code></td><td>Checker report path locked to <code>outputs/</code></td><td><span class="pill open">Still open</span></td><td>Still rejects <code>tmp/</code> and external paths (<code>F8</code>).</td></tr>
+        <tr><td><code>D2/P1</code></td><td>LibreOffice version check hung on Windows</td><td><span class="pill partial">Partial</span></td><td>Auto-discovery and PDF smoke test pass, but version check still hangs 15 s (<code>F3</code>).</td></tr>
+        <tr><td><code>D3</code></td><td>Guide and prompt disagreed on Python setup</td><td><span class="pill fixed">Fixed</span></td><td>Checker enforces the workspace's isolated Python setup or Codex runtime.</td></tr>
+        <tr><td><code>D4</code></td><td><code>inputs/pdd_examples/</code> folder is empty</td><td><span class="pill open">Still open</span></td><td>Still holds only a 310-byte <code>README.md</code> (<code>F7</code>).</td></tr>
+        <tr><td><code>D5</code></td><td>Official v4.4 template shipped twice</td><td><span class="pill partial">Partial</span></td><td>Legacy <code>.doc</code> is now rejected, but 3 copies still ship in the folder (<code>F7</code>).</td></tr>
+        <tr><td><code>D6</code></td><td>Run manifest fields unenforced</td><td><span class="pill fixed">Fixed</span></td><td>Validates agent identity, tool versions, artifact fingerprints, and versions.</td></tr>
+        <tr><td><code>D7</code></td><td>Open gaps outside table passed check</td><td><span class="pill fixed">Fixed</span></td><td>Enforces 1-to-1 match between coverage rows and gap records.</td></tr>
+        <tr><td><code>D8</code></td><td>Special dashes in folder names broke paths</td><td><span class="pill fixed">Fixed</span></td><td>Checker verifies every recorded path against real files on disk.</td></tr>
+        <tr><td><code>P2</code></td><td>Two CarbonCure PDFs had index warnings</td><td><span class="pill open">Still open</span></td><td><code>inputs/</code> unchanged; text still extracts cleanly (<code>F11</code>).</td></tr>
+        <tr><td><code>P3</code></td><td>No minimum page-image resolution for QA</td><td><span class="pill fixed">Fixed</span></td><td>Requires at least 200 DPI and checks image size and fingerprint.</td></tr>
+        <tr><td><code>P4</code></td><td>Audit rewrote a shipped file and broke verify</td><td><span class="pill fixed">Fixed</span></td><td>Audit now writes to <code>tmp/</code>; package verify passes before and after.</td></tr>
+        <tr><td><code>P5</code></td><td>Agent scratch files left in run folders</td><td><span class="pill fixed">Fixed</span></td><td>Scratch files go to <code>tmp/</code>; checker rejects extra files in run folders.</td></tr>
+        <tr><td><code>P6</code></td><td>Word setup guide skipped §1 / mixed pages</td><td><span class="pill open">Still open</span></td><td>Both Drive Word guides untouched since 17 Sep 2026 (<code>F6</code>).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Key findings for staff and reviewers</h2>
+  <p class="sub">Issues that affect a Verra PDD specialist's daily work. Script-level engineering details sit in the collapsible section below.</p>
+  <div class="findings">
+
+    <article class="fcard blocker">
+      <div class="fhead">
+        <span class="pill blocker">Blocker</span>
+        <span class="pill new">New</span>
+        <h3>F1 · Older <code>.xls</code> WTE spreadsheets fail every shipped Excel tool</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>Four shipped WTE workbooks (Linfen VCS 4818 and Yixian VCS 5040) use the older binary <code>.xls</code> format. Every shipped Excel tool skips or rejects them, and the setup installs no <code>.xls</code> reader.</p>
+        <p><b>Evidence</b>Extracting any cell from <code>ER-Linfen-4818-1st Ver.xls</code> exits with an error; the manifest inspector reports only <code>{"format": "xls"}</code> with no sheets, formulas, or saved values.</p>
+        <p><b>Fix</b>Bundle a read-only <code>.xls</code> reader (<code>xlrd</code>) in setup and support <code>.xls</code> in all three workbook tools.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill partial">Partial (B1)</span>
+        <h3>F2 · 183 MB workbook times out (&gt;5 min) and slows every final check</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>The new Excel inspector handles the 111 MB CarbonCure file in 4.2 min without crashing, but timed out past 5 min on the 183.4 MB file. Because the final PDD checker re-scans every marked-read workbook from scratch on every run, checking CarbonCure takes over 11 minutes.</p>
+        <p><b>Evidence</b>Measured runtimes: 56.9 s (19 MB), 254.6 s (111 MB), timeout at 300 s (183 MB).</p>
+        <p><b>Fix</b>Save a temporary inspection cache keyed by file fingerprint so repeat checks finish in seconds.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill open">Still open (D4/D5)</span>
+        <h3>F7 · Missing VCS Standard v4.7 &amp; VM0043 v1.0, duplicate WTE folders, and 3 template copies</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b><code>inputs/</code> and <code>library/</code> did not change from September. <code>VCS Standard v4.7</code> and <code>VM0043 v1.0</code> are missing (VVB CAR risk on CarbonCure and v4.7 projects); <code>inputs/pdd_examples/</code> is empty; three copies of the v4.4 PD template still ship; and four WTE projects appear twice in <code>inputs/fresh_registry/</code>.</p>
+        <p><b>Evidence</b>File inventory and PDF version scans of CarbonCure PRRs (v1.0 / v4.7) and Gaotang PD (ACM0022 v03.0 / v4.7).</p>
+        <p><b>Fix</b>Add VCS Standard v4.7 and VM0043 v1.0 to <code>library/</code>, remove duplicate WTE folders and legacy template copies, and populate or remove <code>inputs/pdd_examples/</code>.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill open">Still open (P6)</span>
+        <h3>F6 · Word setup guides in Drive are unchanged from 17 September</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>Both Word guides in Drive still skip Section 1, cite "pages 5 to 7", and never mention the Oct 28 calculation workflow, Excel tools, strict Python setup, or 200 DPI QA. Non-AI staff following the Word guide miss the entire Oct 28 update.</p>
+        <p><b>Evidence</b>Drive modified dates are both <code>2026-09-17</code>; zero mentions of Oct 28 tools in either document.</p>
+        <p><b>Fix</b>Rebuild both Word guides from the Oct 28 markdown docs and add a one-page plain-English quick start.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill partial">Partial (D2/P1)</span>
+        <h3>F3 · Setup checker still hangs 15 s on LibreOffice version check on Windows</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>Even though the guide warns not to rely on <code>soffice --version</code>, the setup script still runs it and prints <code>UNAVAILABLE (timed out after 15 seconds)</code> on Windows, alarming staff even when PDF conversion works.</p>
+        <p><b>Evidence</b>Observed 15 s timeout on every run of <code>check_portable_pdd.py</code> while the isolated PDF/PNG smoke test passed.</p>
+        <p><b>Fix</b>Read LibreOffice's version from its local <code>version.ini</code> file on Windows instead of running <code>soffice --version</code>.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill partial">Partial (N2)</span>
+        <h3>F4 · Dark-header contrast check misses default black text in Word</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>The new contrast check catches table headers where black text is set directly on the words, but misses headers that inherit default black from Word's Normal style on a dark navy fill.</p>
+        <p><b>Evidence</b>Probe on two navy (<code>#2B3957</code>) header cells: explicit black flagged at 1.83:1; style-inherited black passed with 0 warnings.</p>
+        <p><b>Fix</b>Check the effective inherited text color (defaulting to black on dark fills), not only direct run formatting.</p>
+      </div>
+    </article>
+
+    <article class="fcard defect">
+      <div class="fhead">
+        <span class="pill defect">Defect</span>
+        <span class="pill new">New + D1</span>
+        <h3>F8 · Word editability check stalls command-line AI tools</h3>
+      </div>
+      <div class="fmeta">
+        <p><b>What</b>To clear <code>QA_PENDING</code>, the checker requires confirming the final DOCX was opened in an editable Word view. Command-line AI agents cannot open Word, so runs either stay stuck until a human signs off (undocumented) or agents rubber-stamp the box.</p>
+        <p><b>Evidence</b><code>scripts/review_records.py:314-317</code> requires <code>docx_opened_for_editability_check: true</code>.</p>
+        <p><b>Fix</b>Label the Word editability check explicitly as a human reviewer sign-off step in the run prompts.</p>
+      </div>
+    </article>
+
+  </div>
+
+  <details class="tech">
+    <summary>Technical notes for Tinh (script-level fixes: F5, F8-path, F9, F10, F11)</summary>
+    <div class="tech-body">
+      <p><b>F5 (Defect · New) — Top-level <code>docx</code> import crash:</b> <code>scripts/check_portable_pdd.py:15</code> runs <code>from docx import Document</code> before line 129 checks installed packages via <code>find_spec</code>. Staff running the checker before <code>pip install</code> see a raw traceback. Fix: move the import inside <code>functional_smoke()</code>.</p>
+      <p><b>F8-path (Defect · D1 still open) — <code>--report</code> locked to <code>outputs/</code>:</b> <code>scripts/check_authored_pdd.py:392</code> still rejects <code>--report</code> under <code>tmp/</code>, inconsistent with <code>audit_portable_pdd.py</code> and <code>extract_xlsx_evidence.py</code>. Fix: allow <code>tmp/</code> as well as <code>outputs/</code>.</p>
+      <p><b>F9 (Polish · New) — 3 new scripts omitted from audit:</b> <code>scripts/extract_xlsx_evidence.py</code>, <code>calculations/tools/inspect_workbook.py</code>, and <code>test_inspect_workbook.py</code> are in <code>PORTABLE_MANIFEST.json</code> but missing from <code>CANONICAL_FILES</code> in <code>scripts/audit_portable_pdd.py:27-69</code>. Also align Poppler discovery (<code>native/poppler</code> fallback) with <code>check_portable_pdd.py:138-139</code>.</p>
+      <p><b>F10 (Polish · New) — Full-sheet XML scan on top-row reads:</b> <code>scripts/extract_xlsx_evidence.py:165-171</code> took 47.4 s to read <code>Sheet0!A1:AR2</code> from the 19 MB workbook because <code>ElementTree.iterparse</code> scans all 3.2M cells after rows 1–2 are already found. Fix: break out once all target cells for the sheet are collected.</p>
+      <p><b>F11 (Polish · P2 still open) — Upstream PDF index warnings:</b> Two CarbonCure registry PDFs still emit <code>pypdf</code> warnings (<code>invalid pdf header</code>, <code>incorrect startxref pointer</code>) before recovering text. Fix: note known upstream Verra warnings in <code>inputs/README.md</code>.</p>
+      <p><b>F2 detail — XML streaming bottleneck:</b> <code>scripts/source_manifest.py:240-244</code> re-runs <code>inspect_source_structure()</code> on every <code>READ</code> file during <code>validate_source_manifest()</code>. Switching to <code>lxml.etree.iterparse</code> or caching by <code>(path, bytes, sha256)</code> under <code>tmp/</code> eliminates the 11+ min CarbonCure validation stall.</p>
+    </div>
+  </details>
+</section>
+
+<section>
+  <h2>Top 5 improvements for the next release</h2>
+  <p class="sub">Five changes that matter most for staff usability and Verra audit reliability.</p>
+  <div class="roadmap">
+    <div class="rcard">
+      <div class="step">01 · UNBLOCK WTE</div>
+      <h3>Support older <code>.xls</code></h3>
+      <p>Bundle <code>xlrd</code> and read <code>.xls</code> workbooks read-only so Linfen (4818) and Yixian (5040) work out of the box.</p>
+    </div>
+    <div class="rcard">
+      <div class="step">02 · VERRA LIBRARY</div>
+      <h3>Add VCS v4.7 &amp; VM0043 v1.0</h3>
+      <p>Ship the missing Standard and v1.0 methodology, remove duplicate WTE folders, and keep one v4.4 PD template.</p>
+    </div>
+    <div class="rcard">
+      <div class="step">03 · STAFF FIRST HOUR</div>
+      <h3>Update Word guides &amp; Windows check</h3>
+      <p>Refresh both Drive guides, fix the 15 s LibreOffice timeout, and write plain-English notes on rounding and empty Excel caches.</p>
+    </div>
+    <div class="rcard">
+      <div class="step">04 · SPEED UP EXCEL</div>
+      <h3>Cache scans &amp; stop early</h3>
+      <p>Cache workbook structure by file fingerprint and stop scanning once requested top rows are found.</p>
+    </div>
+    <div class="rcard">
+      <div class="step">05 · TIGHTEN QA</div>
+      <h3>Inherited contrast &amp; human sign-off</h3>
+      <p>Check Word style-inherited header text colors and mark DOCX editability as a human reviewer step.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div><strong>Note on repo scope:</strong> Unlike <code>pdd-auto</code>'s deterministic Python calculation engine, Tinh's package is an agent-driven authoring and read-only workbook verification kit; the two complement each other.</div>
+  <ol>
+    <li>Oct 28 package: Google Drive folder <code>1_2ethHHCfDk4pS8xIRKg2J_dlt5T5jaa</code> (<code>PDD.zip</code>, id <code>1Cu3cf6ULB302RtokO5-SoswEoo_8iLkB</code>, 672,586,144 B) and patch note <code>PORTABLE_UPDATE_2026-10-28.md</code> (id <code>1fyplvvpiuUW_7qD0rqUBKdzSRr6SoMIC</code>).</li>
+    <li>September baseline: <code>ref/PDD staff September 2026/PDD_v1/PDD</code> and prior field-test reports (<code>2026-09-24</code> omp, <code>2026-10-07</code> codex, <code>2026-10-07</code> summary).</li>
+    <li>Full command outputs, diffs, and independent ER checks: <code>findings.md</code> in this coop run folder.</li>
+  </ol>
+</footer>
+
+</div>
+</body>
+</html>
